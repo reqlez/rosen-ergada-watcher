@@ -1,2 +1,3 @@
 # rosen-ergada-watcher
-Ergo + Cardano Rosen watcher ops
+
+Some code taken from rosen-bridge/operation watcher module.
