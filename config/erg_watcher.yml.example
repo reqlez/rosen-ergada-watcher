@@ -1,0 +1,15 @@
+network: ergo
+ergo:
+  type: node
+  initialHeight: CHANGEME_ERGO_INITIAL_HEIGHT
+  mnemonic: "CHANGEME_ERGO_MNEMONIC"
+  node:
+    url: http://ergnode:9053/
+  explorer:
+    url: https://explorer-api.ergohost.io   
+  transaction:
+    commitmentTimeoutConfirmation: 720
+
+observation:
+  confirmation: 10
+  validThreshold: 720

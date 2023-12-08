@@ -1,0 +1,18 @@
+network: cardano
+ergo:
+  type: node
+  initialHeight: CHANGEME_ERGO_INITIAL_HEIGHT
+  mnemonic: "CHANGEME_ERGO_MNEMONIC"
+  node:
+    url: http://ergnode:9053/
+  explorer:
+    url: https://explorer-api.ergohost.io   
+cardano:
+  type: koios
+  koios:
+    url: https://api.koios.rest/api/v1
+    authToken: "CHANGEME_KOIOS_AUTH_TOKEN"
+  initial:
+    height: CHANGEME_CARDANO_INITIAL_HEIGHT
+    hash: CHANGEME_CARDANO_INITIAL_HEIGHT_BLOCK_HASH
+    slot: CHANGEME_CARDANO_INITIAL_HEIGHT_ABSOLUTE_SLOT

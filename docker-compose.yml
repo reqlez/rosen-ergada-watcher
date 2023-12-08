@@ -1,0 +1,238 @@
+version: '3.8'
+
+services:
+  ergnode:
+    image: ergoplatform/ergo:v5.0.18
+    command: --mainnet -c /etc/ergo.conf
+    environment:
+      - _JAVA_OPTIONS=-Xms${ERGNODE_HEAP:-4G} -Xmx${ERGNODE_HEAP:-4G}
+    ports:
+      - "9053:9053"
+      - "9030:9030"
+    volumes:
+      - ergnode_data:/home/ergo/.ergo
+      - ./config/ergo.conf:/etc/ergo.conf:ro
+    networks:
+      - rosen_network
+    restart: always
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  ergdb:
+    image: postgres:16
+    env_file:
+      - ./config/ergdotenv
+    volumes:
+      - ergpg_data:/var/lib/postgresql/data
+    networks:
+      - rosen_network
+    restart: always
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB']
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  adadb:
+    image: postgres:16
+    env_file:
+      - ./config/adadotenv
+    volumes:
+      - adapg_data:/var/lib/postgresql/data
+    networks:
+      - rosen_network
+    restart: always
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB']
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  ergwatcher:
+    image: ghcr.io/rosen-bridge/watcher-service:${WATCHER_IMAGE_VERSION:-latest}
+    environment:
+      - POSTGRES_HOST=ergdb
+    env_file:
+      - ./config/ergdotenv
+    volumes:
+      - ./config/erg_watcher.yml:/app/services/watcher/config/local.yml:ro
+      - erg_watcher_logs:/app/services/watcher/logs/
+    networks:
+      - rosen_network
+    restart: always
+    depends_on:
+      ergnode:
+        condition: service_started
+      ergdb:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD-SHELL', 'curl --fail http://localhost:3000/health/status || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  adawatcher:
+    image: ghcr.io/rosen-bridge/watcher-service:${WATCHER_IMAGE_VERSION:-latest}
+    environment:
+      - POSTGRES_HOST=adadb
+    env_file:
+      - ./config/adadotenv
+    volumes:
+      - ./config/ada_watcher.yml:/app/services/watcher/config/local.yml:ro
+      - ada_watcher_logs:/app/services/watcher/logs/
+    networks:
+      - rosen_network
+    restart: always
+    depends_on:
+      ergnode:
+        condition: service_started
+      adadb:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD-SHELL', 'curl --fail http://localhost:3000/health/status || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  ergui:
+    image: ghcr.io/rosen-bridge/ui-watcher:${UI_IMAGE_VERSION:-latest}
+    environment:
+      - SERVICE_NAME=ergwatcher
+    networks:
+      - rosen_network
+    restart: always
+    volumes:
+      - erg_nginx_logs:/var/log/nginx
+    depends_on:
+      ergwatcher:
+        condition: service_healthy
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  adaui:
+    image: ghcr.io/rosen-bridge/ui-watcher:${UI_IMAGE_VERSION:-latest}
+    environment:
+      - SERVICE_NAME=adawatcher
+    networks:
+      - rosen_network
+    restart: always
+    volumes:
+      - ada_nginx_logs:/var/log/nginx
+    depends_on:
+      adawatcher:
+        condition: service_healthy
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
+        
+  ergauth:
+    build:
+       context: ./nginx_auth
+    ports:
+      - ${WATCHER_HOST:-127.0.0.1}:${ERG_WATCHER_PORT:-3030}:80
+    environment:
+      - PORT=80
+      - FORWARD_HOST=ergui
+      - FORWARD_PORT=80
+    env_file:
+      - .env
+    networks:
+      - rosen_network
+    restart: always
+    depends_on:
+      ergui:
+        condition: service_started
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
+        
+  adaauth:
+    build:
+       context: ./nginx_auth
+    ports:
+      - ${WATCHER_HOST:-127.0.0.1}:${ADA_WATCHER_PORT:-3031}:80
+    environment:
+      - PORT=80
+      - FORWARD_HOST=adaui
+      - FORWARD_PORT=80
+    env_file:
+      - .env
+    networks:
+      - rosen_network
+    restart: always
+    depends_on:
+      adaui:
+        condition: service_started
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  ergpg_data:
+    driver: local
+    driver_opts:
+      device: ./db/ergpg16
+      o: bind
+      type: none
+  adapg_data:
+    driver: local
+    driver_opts:
+      device: ./db/adapg16
+      o: bind
+      type: none
+  ergnode_data:
+    driver: local
+    driver_opts:
+      device: ./db/erg_node
+      o: bind
+      type: none
+  erg_nginx_logs:
+    driver: local
+    driver_opts:
+      device: ./logs/erg_nginx
+      o: bind
+      type: none
+  erg_watcher_logs:
+    driver: local
+    driver_opts:
+      device: ./logs/erg_watcher
+      o: bind
+      type: none
+  ada_nginx_logs:
+    driver: local
+    driver_opts:
+      device: ./logs/ada_nginx
+      o: bind
+      type: none
+  ada_watcher_logs:
+    driver: local
+    driver_opts:
+      device: ./logs/ada_watcher
+      o: bind
+      type: none
+
+networks:
+  rosen_network:
