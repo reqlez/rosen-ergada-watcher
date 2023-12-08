@@ -1,0 +1,111 @@
+version: '3.8'
+
+services:
+  ergonode:
+    image: ergoplatform/ergo:v5.0.16
+    command: --mainnet -c /etc/ergo.conf
+    environment:
+      - _JAVA_OPTIONS=-Xms4G -Xmx4G # HEAP: same values for best performance    
+    ports:
+      - "9053:9053"
+      - "9030:9030"    
+    volumes:
+      - ergonode_data:/home/ergo/.ergo
+      - ./config/ergo.conf:/etc/ergo.conf:ro
+    networks:
+      - rosen_network      
+    restart: always
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
+  db:
+    image: postgres:16
+    env_file:
+      - .env
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    networks:
+      - rosen_network
+    restart: always    
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB']
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
+        
+  service:
+    image: ghcr.io/rosen-bridge/watcher-service:${WATCHER_IMAGE_VERSION:-latest}
+    environment:
+      - POSTGRES_HOST=db
+    env_file:
+      - .env
+    volumes:
+      - ./config/local.yaml:/app/services/watcher/config/local.yml:ro
+      - watcher_logs:/app/services/watcher/logs/
+    networks:
+      - rosen_network
+    restart: always
+    depends_on:
+      ergonode:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD-SHELL', 'curl --fail http://localhost:3000/health/status || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"      
+
+  ui:
+    image: ghcr.io/rosen-bridge/ui-watcher:${UI_IMAGE_VERSION:-latest}
+    networks:
+      - rosen_network
+    restart: always
+    ports:
+      - 127.0.0.1:${WATCHER_PORT:-3030}:80
+    volumes:
+      - nginx_logs:/var/log/nginx
+    depends_on:
+      service:
+        condition: service_healthy
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  pg_data:
+    driver: local
+    driver_opts:
+      device: ./db/pgsql16
+      o: bind
+      type: none
+  ergonode_data:
+    driver: local
+    driver_opts:
+      device: ./db/ergonode
+      o: bind
+      type: none
+  nginx_logs:
+    driver: local
+    driver_opts:
+      device: ./logs/nginx
+      o: bind
+      type: none 
+  watcher_logs:
+    driver: local
+    driver_opts:
+      device: ./logs/watcher
+      o: bind
+      type: none       
+
+networks:
+  rosen_network:
