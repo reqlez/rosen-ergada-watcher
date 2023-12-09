@@ -1,8 +1,8 @@
 network: ergo
 ergo:
   type: node
-  initialHeight: CHANGE_ME_ERGO_INITIAL_HEIGHT
-  mnemonic: "CHANGE_ME_ERGO_MNEMONIC"
+  initialHeight: CHANGEME_ERGO_INITIAL_HEIGHT
+  mnemonic: "CHANGEME_ERGO_MNEMONIC"
   node:
     url: http://ergonode:9053/
   explorer:
