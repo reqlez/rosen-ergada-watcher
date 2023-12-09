@@ -1,0 +1,7 @@
+# Required env vars for ERG Watcher and ERG DB. Rename this file to: ergdotenv
+# Ports can be the same for adadb and ergdb as they are not used outside of rosen_network
+# For additional security, randomize the user and pass below:
+POSTGRES_PASSWORD=
+POSTGRES_USER=
+POSTGRES_DB=rosenerg
+POSTGRES_PORT=5432
