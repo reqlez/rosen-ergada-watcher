@@ -19,12 +19,13 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
-  db:
+
+  ergdb:
     image: postgres:16
     env_file:
-      - .env
+      - ./config/ergdotenv
     volumes:
-      - pg_data:/var/lib/postgresql/data
+      - ergpg_data:/var/lib/postgresql/data
     networks:
       - rosen_network
     restart: always    
@@ -37,14 +38,32 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
-        
+
+  adadb:
+    image: postgres:16
+    env_file:
+      - ./config/adadotenv
+    volumes:
+      - adapg_data:/var/lib/postgresql/data
+    networks:
+      - rosen_network
+    restart: always    
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB']
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
+
   ergwatcher:
     image: ghcr.io/rosen-bridge/watcher-service:${WATCHER_IMAGE_VERSION:-latest}
     environment:
-      - POSTGRES_HOST=db
-      #TODO: separate ada and erg DBs on same instance?      
+      - POSTGRES_HOST=ergdb
     env_file:
-      - .env
+      - ./config/ergdotenv
     volumes:
       - ./config/erg_watcher.yml:/app/services/watcher/config/local.yml:ro
       - erg_watcher_logs:/app/services/watcher/logs/
@@ -53,7 +72,7 @@ services:
     restart: always
     depends_on:
       ergnode:
-      db:
+      ergdb:
         condition: service_healthy
     healthcheck:
       test: ['CMD-SHELL', 'curl --fail http://localhost:3000/health/status || exit 1']
@@ -63,15 +82,14 @@ services:
     logging:
       options:
         max-size: "10m"
-        max-file: "3"      
+        max-file: "3"
 
   adawatcher:
     image: ghcr.io/rosen-bridge/watcher-service:${WATCHER_IMAGE_VERSION:-latest}
     environment:
-      - POSTGRES_HOST=db
-      #TODO: separate ada and erg DBs on same instance?
+      - POSTGRES_HOST=adadb
     env_file:
-      - .env
+      - ./config/adadotenv
     volumes:
       - ./config/ada_watcher.yml:/app/services/watcher/config/local.yml:ro
       - ada_watcher_logs:/app/services/watcher/logs/
@@ -80,7 +98,7 @@ services:
     restart: always
     depends_on:
       ergnode:
-      db:
+      adadb:
         condition: service_healthy
     healthcheck:
       test: ['CMD-SHELL', 'curl --fail http://localhost:3000/health/status || exit 1']
@@ -90,7 +108,7 @@ services:
     logging:
       options:
         max-size: "10m"
-        max-file: "3"           
+        max-file: "3"
 
   ergui:
     image: ghcr.io/rosen-bridge/ui-watcher:${UI_IMAGE_VERSION:-latest}
@@ -98,7 +116,7 @@ services:
       - rosen_network
     restart: always
     ports:
-      - 127.0.0.1:${WATCHER_PORT:-3030}:80 #TODO use different variables / ports for erg and ada?
+      - 127.0.0.1:${ERG_WATCHER_PORT:-3030}:80
     volumes:
       - erg_nginx_logs:/var/log/nginx
     depends_on:
@@ -115,7 +133,7 @@ services:
       - rosen_network
     restart: always
     ports:
-      - 127.0.0.1:${WATCHER_PORT:-3030}:80 #TODO use different variables / ports for erg and ada?
+      - 127.0.0.1:${ADA_WATCHER_PORT:-3031}:80
     volumes:
       - ada_nginx_logs:/var/log/nginx
     depends_on:
@@ -125,12 +143,18 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
-        
+
 volumes:
-  pg_data:
+  ergpg_data:
     driver: local
     driver_opts:
-      device: ./db/pgsql16
+      device: ./db/ergpg16
+      o: bind
+      type: none
+  adapg_data:
+    driver: local
+    driver_opts:
+      device: ./db/adapg16
       o: bind
       type: none
   ergnode_data:
@@ -144,25 +168,25 @@ volumes:
     driver_opts:
       device: ./logs/erg_nginx
       o: bind
-      type: none 
+      type: none
   erg_watcher_logs:
     driver: local
     driver_opts:
       device: ./logs/erg_watcher
       o: bind
-      type: none       
+      type: none
   ada_nginx_logs:
     driver: local
     driver_opts:
       device: ./logs/ada_nginx
       o: bind
-      type: none 
+      type: none
   ada_watcher_logs:
     driver: local
     driver_opts:
       device: ./logs/erg_watcher
       o: bind
-      type: none             
+      type: none
 
 networks:
   rosen_network:
