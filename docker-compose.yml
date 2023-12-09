@@ -184,7 +184,7 @@ volumes:
   ada_watcher_logs:
     driver: local
     driver_opts:
-      device: ./logs/erg_watcher
+      device: ./logs/ada_watcher
       o: bind
       type: none
 
