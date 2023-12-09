@@ -1,6 +1,7 @@
-# Required env vars for ADA Watcher and ADA DB. Rename to: adadotenv
+# Required env vars for ADA Watcher and ADA DB. Rename this file to: adadotenv
 # Ports can be the same for adadb and ergdb as they are not used outside of rosen_network
+# For additional security, randomize the user and pass below:
 POSTGRES_PASSWORD=
 POSTGRES_USER=
-POSTGRES_DB=
+POSTGRES_DB=rosenada
 POSTGRES_PORT=5432
