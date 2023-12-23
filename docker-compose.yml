@@ -72,6 +72,7 @@ services:
     restart: always
     depends_on:
       ergnode:
+        condition: service_started
       ergdb:
         condition: service_healthy
     healthcheck:
@@ -98,6 +99,7 @@ services:
     restart: always
     depends_on:
       ergnode:
+        condition: service_started
       adadb:
         condition: service_healthy
     healthcheck:
