@@ -4,6 +4,8 @@ Some code taken from rosen-bridge/operation watcher module.
 
 This is still WIP, I tested it so far and running a watcher with it, but use at own risk and report any issues.
 
+WARNING: While I added nginx basic auth support that was not present in original ops repo, note that if you are accessing over http credentails are clear text and if you are on some hotel WIFI accessing your watcher, you are going to get REKT. SSL cert implementation coming, otherwise, just keep it bound to 127.0.0.1 and don't open to world, or make a tunnel.
+
 Copy env var template before editing:
 
 ```console
